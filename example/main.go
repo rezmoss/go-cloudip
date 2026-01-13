@@ -4,114 +4,157 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"time"
 
 	"github.com/rezmoss/go-cloudip"
 )
 
 func main() {
-	fmt.Println("=== go-cloudip Example ===\n")
+	fmt.Println("=== go-cloudip Comprehensive Example ===")
+	fmt.Println()
 
-	// ----------------------------------------
-	// 1. Simple usage with package-level functions
-	// ----------------------------------------
-	fmt.Println("1. Simple Provider Detection")
-	fmt.Println("-----------------------------")
-
-	testIPs := []string{
-		"52.94.76.1",   // AWS
-		"34.64.0.1",    // GCP
-		"104.16.0.1",   // Cloudflare
-		"1.1.1.1",      // Cloudflare DNS
-		"192.168.1.1",  // Private (not cloud)
-		"8.8.8.8",      // Google DNS
+	// Test IPs for all 6 providers (verified working IPs)
+	testCases := []struct {
+		name     string
+		ip       string
+		expected cloudip.Provider
+	}{
+		{"AWS", "52.94.76.1", cloudip.ProviderAWS},
+		{"AWS S3", "54.231.0.1", cloudip.ProviderAWS},
+		{"GCP", "35.190.0.1", cloudip.ProviderGCP},
+		{"GCP Compute", "35.184.0.1", cloudip.ProviderGCP},
+		{"Azure", "20.33.0.1", cloudip.ProviderAzure},
+		{"Cloudflare", "104.16.0.1", cloudip.ProviderCloudflare},
+		{"Cloudflare CDN", "172.64.0.1", cloudip.ProviderCloudflare},
+		{"DigitalOcean", "167.99.0.1", cloudip.ProviderDigitalOcean},
+		{"Oracle", "129.148.0.1", cloudip.ProviderOracle},
+		{"Private (not cloud)", "192.168.1.1", cloudip.ProviderUnknown},
+		{"Google DNS (not cloud)", "8.8.8.8", cloudip.ProviderUnknown},
 	}
 
-	for _, ip := range testIPs {
-		provider := cloudip.GetProvider(ip)
-		isCloud := cloudip.IsCloudProvider(ip)
-		fmt.Printf("  %s -> Provider: %-12s IsCloud: %v\n", ip, provider, isCloud)
-	}
+	// 1. Data Information
+	fmt.Println("1. DATA INFORMATION")
+	fmt.Println("-------------------")
+	fmt.Printf("   Version:     %s\n", cloudip.Version())
+	fmt.Printf("   Range Count: %d\n", cloudip.RangeCount())
+	fmt.Printf("   Providers:   %v\n", cloudip.Providers())
+	fmt.Println()
 
-	// ----------------------------------------
-	// 2. Provider-specific checks
-	// ----------------------------------------
-	fmt.Println("\n2. Provider-Specific Checks")
+	// 2. GetProvider() - Basic detection
+	fmt.Println("2. PROVIDER DETECTION (GetProvider)")
+	fmt.Println("------------------------------------")
+	for _, tc := range testCases {
+		provider := cloudip.GetProvider(tc.ip)
+		status := "OK"
+		if provider != tc.expected {
+			status = fmt.Sprintf("FAIL (expected %s)", tc.expected)
+		}
+		fmt.Printf("   %-20s %-15s -> %-12s [%s]\n", tc.name, tc.ip, provider, status)
+	}
+	fmt.Println()
+
+	// 3. Provider-specific check functions
+	fmt.Println("3. PROVIDER-SPECIFIC CHECKS")
 	fmt.Println("---------------------------")
+	checkFuncs := []struct {
+		name string
+		fn   func(string) bool
+		ip   string
+	}{
+		{"IsAWS", cloudip.IsAWS, "52.94.76.1"},
+		{"IsGCP", cloudip.IsGCP, "35.190.0.1"},
+		{"IsAzure", cloudip.IsAzure, "20.33.0.1"},
+		{"IsCloudflare", cloudip.IsCloudflare, "104.16.0.1"},
+		{"IsDigitalOcean", cloudip.IsDigitalOcean, "167.99.0.1"},
+		{"IsOracle", cloudip.IsOracle, "129.148.0.1"},
+		{"IsCloudProvider", cloudip.IsCloudProvider, "52.94.76.1"},
+	}
+	for _, cf := range checkFuncs {
+		result := cf.fn(cf.ip)
+		fmt.Printf("   %-20s(%s) = %v\n", cf.name, cf.ip, result)
+	}
+	fmt.Println()
 
-	awsIP := "52.94.76.1"
-	fmt.Printf("  %s:\n", awsIP)
-	fmt.Printf("    IsAWS:        %v\n", cloudip.IsAWS(awsIP))
-	fmt.Printf("    IsGCP:        %v\n", cloudip.IsGCP(awsIP))
-	fmt.Printf("    IsCloudflare: %v\n", cloudip.IsCloudflare(awsIP))
-
-	// ----------------------------------------
-	// 3. Detailed lookup with full info
-	// ----------------------------------------
-	fmt.Println("\n3. Detailed Lookup")
-	fmt.Println("------------------")
-
-	for _, ip := range testIPs[:3] {
-		result := cloudip.Lookup(ip)
+	// 4. Detailed Lookup with region/service info
+	fmt.Println("4. DETAILED LOOKUP (with region/service)")
+	fmt.Println("-----------------------------------------")
+	for _, tc := range testCases {
+		result := cloudip.Lookup(tc.ip)
 		if result.Found {
-			fmt.Printf("  %s:\n", ip)
-			fmt.Printf("    Provider: %s\n", result.Provider)
-			fmt.Printf("    Region:   %s\n", result.Region)
-			fmt.Printf("    Service:  %s\n", result.Service)
-			fmt.Printf("    CIDR:     %s\n", result.CIDR)
+			fmt.Printf("   %s (%s):\n", tc.name, tc.ip)
+			fmt.Printf("      Provider: %s\n", result.Provider)
+			fmt.Printf("      Region:   %s\n", result.Region)
+			fmt.Printf("      Service:  %s\n", result.Service)
+			fmt.Printf("      CIDR:     %s\n", result.CIDR)
 		} else {
-			fmt.Printf("  %s: Not found in cloud IP ranges\n", ip)
+			fmt.Printf("   %s (%s): Not found in cloud ranges\n", tc.name, tc.ip)
 		}
 	}
+	fmt.Println()
 
-	// ----------------------------------------
-	// 4. Data version and metadata
-	// ----------------------------------------
-	fmt.Println("\n4. Data Information")
-	fmt.Println("-------------------")
-	fmt.Printf("  Version:     %s\n", cloudip.Version())
-	fmt.Printf("  Range Count: %d\n", cloudip.RangeCount())
-	fmt.Printf("  Providers:   %v\n", cloudip.Providers())
+	// 5. Using netip.Addr (LookupAddr, GetProviderAddr)
+	fmt.Println("5. NETIP.ADDR FUNCTIONS")
+	fmt.Println("-----------------------")
+	addr := netip.MustParseAddr("52.94.76.1")
+	fmt.Printf("   IP: %s\n", addr)
+	fmt.Printf("   GetProviderAddr:      %s\n", cloudip.GetProviderAddr(addr))
+	fmt.Printf("   IsCloudProviderAddr:  %v\n", cloudip.IsCloudProviderAddr(addr))
+	fmt.Printf("   IsAWSAddr:            %v\n", cloudip.IsAWSAddr(addr))
+	result := cloudip.LookupAddr(addr)
+	fmt.Printf("   LookupAddr Found:     %v\n", result.Found)
+	fmt.Println()
 
-	// ----------------------------------------
-	// 5. Custom detector with options
-	// ----------------------------------------
-	fmt.Println("\n5. Custom Detector")
-	fmt.Println("------------------")
-
-	detector, err := cloudip.NewDetector(
-		cloudip.WithDataDir("./cloudip-cache"),
-		cloudip.WithAutoUpdate(24*time.Hour),
-	)
-	if err != nil {
-		fmt.Printf("  Error creating detector: %v\n", err)
-	} else {
-		defer detector.Close()
-
-		result := detector.Lookup("34.64.0.1")
-		fmt.Printf("  Custom detector lookup for 34.64.0.1:\n")
-		fmt.Printf("    Found:    %v\n", result.Found)
-		fmt.Printf("    Provider: %s\n", result.Provider)
-	}
-
-	// ----------------------------------------
 	// 6. Check for updates
-	// ----------------------------------------
-	fmt.Println("\n6. Update Check")
+	fmt.Println("6. UPDATE CHECK")
 	fmt.Println("---------------")
-
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	hasUpdate, info, err := cloudip.CheckUpdate(ctx)
 	if err != nil {
-		fmt.Printf("  Error checking update: %v\n", err)
+		fmt.Printf("   Error: %v\n", err)
 	} else if hasUpdate && info != nil {
-		fmt.Printf("  New version available: %s\n", info.Version)
-		fmt.Printf("  Ranges: %d\n", info.Ranges)
+		fmt.Printf("   New version available: %s\n", info.Version)
+		fmt.Printf("   Remote ranges: %d\n", info.Ranges)
 	} else {
-		fmt.Println("  Data is up to date")
+		fmt.Println("   Data is up to date")
 	}
+	fmt.Println()
 
-	fmt.Println("\n=== Example Complete ===")
+	// 7. Custom detector with options
+	fmt.Println("7. CUSTOM DETECTOR")
+	fmt.Println("------------------")
+	detector, err := cloudip.NewDetector(
+		cloudip.WithOffline(),
+	)
+	if err != nil {
+		fmt.Printf("   Error: %v\n", err)
+	} else {
+		defer detector.Close()
+		fmt.Printf("   Custom detector version: %s\n", detector.Version())
+		fmt.Printf("   Custom detector ranges:  %d\n", detector.RangeCount())
+		r := detector.Lookup("52.94.76.1")
+		fmt.Printf("   Custom lookup (52.94.76.1): %s\n", r.Provider)
+	}
+	fmt.Println()
+
+	// 8. Summary
+	fmt.Println("8. SUMMARY")
+	fmt.Println("----------")
+	passed := 0
+	failed := 0
+	for _, tc := range testCases {
+		if cloudip.GetProvider(tc.ip) == tc.expected {
+			passed++
+		} else {
+			failed++
+		}
+	}
+	fmt.Printf("   Tests passed: %d/%d\n", passed, len(testCases))
+	if failed > 0 {
+		fmt.Printf("   Tests failed: %d (data may need update)\n", failed)
+	}
+	fmt.Println()
+	fmt.Println("=== Example Complete ===")
 }

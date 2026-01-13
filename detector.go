@@ -52,21 +52,10 @@ func NewDetector(opts ...Option) (*Detector, error) {
 	return d, nil
 }
 
-// loadInitialData loads data from cache, network, or embedded data.
+// loadInitialData loads data from network, cache, or embedded data.
+// Priority: network (always freshest) -> cache -> embedded
 func (d *Detector) loadInitialData() error {
-	// Try cache first if configured
-	if d.opts.dataDir != "" {
-		data, err := loadFromCache(d.opts.dataDir)
-		if err == nil {
-			state, err := loadFromBytes(data)
-			if err == nil {
-				d.state.Store(state)
-				return nil
-			}
-		}
-	}
-
-	// Try fetching from network if not offline
+	// Try fetching from network first if not offline (always get freshest data)
 	if !d.opts.offline {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
@@ -76,10 +65,22 @@ func (d *Detector) loadInitialData() error {
 			state, err := loadFromBytes(data)
 			if err == nil {
 				d.state.Store(state)
-				// Save to cache
+				// Save to cache for future use
 				if d.opts.dataDir != "" {
 					_ = saveToCache(d.opts.dataDir, data)
 				}
+				return nil
+			}
+		}
+	}
+
+	// Try cache if network failed or offline
+	if d.opts.dataDir != "" {
+		data, err := loadFromCache(d.opts.dataDir)
+		if err == nil {
+			state, err := loadFromBytes(data)
+			if err == nil {
+				d.state.Store(state)
 				return nil
 			}
 		}
