@@ -1,0 +1,69 @@
+# GoReleaser configuration for go-cloudip library
+# This is a source-only library, no binaries are built
+
+version: 2
+
+# Skip building binaries - this is a library
+builds:
+  - skip: true
+
+# Changelog configuration
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: "New Features"
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "Bug Fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "Performance Improvements"
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: "Other Changes"
+      order: 999
+
+# GitHub release configuration
+release:
+  github:
+    owner: rezmoss
+    name: go-cloudip
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## go-cloudip {{ .Tag }}
+
+    Fast cloud provider IP detection library for Go.
+
+    ### Installation
+
+    ```bash
+    go get github.com/rezmoss/go-cloudip@{{ .Tag }}
+    ```
+  footer: |
+    ---
+
+    **Full Changelog**: https://github.com/rezmoss/go-cloudip/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# Skip unnecessary steps for a library
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_source"
+    files:
+      - LICENSE
+      - README.md
+
+# Announce release (optional - can be removed if not needed)
+announce:
+  skip: "true"
