@@ -2,7 +2,6 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/rezmoss/go-cloudip.svg)](https://pkg.go.dev/github.com/rezmoss/go-cloudip)
 [![Go Report Card](https://goreportcard.com/badge/github.com/rezmoss/go-cloudip)](https://goreportcard.com/report/github.com/rezmoss/go-cloudip)
-[![CI](https://github.com/rezmoss/go-cloudip/actions/workflows/ci.yml/badge.svg)](https://github.com/rezmoss/go-cloudip/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Fast cloud provider IP detection for Go. Determine if an IP address belongs to AWS, GCP, Azure, Cloudflare, DigitalOcean, or Oracle Cloud with sub-microsecond lookup times.
