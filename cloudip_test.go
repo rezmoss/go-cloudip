@@ -3,6 +3,8 @@ package cloudip
 import (
 	"net/netip"
 	"testing"
+
+	"github.com/rezmoss/go-cloudip/internal/source"
 )
 
 // Test IPs for various providers
@@ -280,9 +282,9 @@ func BenchmarkIsCloudProvider(b *testing.B) {
 }
 
 func BenchmarkLoad(b *testing.B) {
-	data, err := getEmbeddedData()
+	data, err := source.GetEmbeddedData()
 	if err != nil {
-		b.Fatalf("getEmbeddedData() error = %v", err)
+		b.Fatalf("GetEmbeddedData() error = %v", err)
 	}
 
 	b.ResetTimer()

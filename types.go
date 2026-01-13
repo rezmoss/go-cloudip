@@ -82,21 +82,6 @@ func netIPToNetIP(addr netip.Addr) net.IP {
 	return addr.AsSlice()
 }
 
-// database represents the MessagePack database structure.
-type database struct {
-	Version   string   `msgpack:"version"`
-	BuildTime int64    `msgpack:"build_time"`
-	Providers []string `msgpack:"providers"`
-	Ranges    []dbRange `msgpack:"ranges"`
-}
-
-// dbRange represents a single IP range from the database.
-type dbRange struct {
-	CIDR     string `msgpack:"cidr"`
-	Provider int    `msgpack:"p"`
-	Region   string `msgpack:"r,omitempty"`
-	Service  string `msgpack:"s,omitempty"`
-}
 
 // detectorState holds the immutable state for lookups.
 // This is swapped atomically for lock-free reads.

@@ -4,7 +4,13 @@ import (
 	"context"
 	"net/netip"
 	"sync"
+
+	"github.com/rezmoss/go-cloudip/internal/source"
 )
+
+// VersionInfo contains metadata about the data version.
+// This is a re-export of the internal type for public use.
+type VersionInfo = source.VersionInfo
 
 var (
 	// Global default detector

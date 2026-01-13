@@ -1,4 +1,4 @@
-package cloudip
+package source
 
 import (
 	"encoding/json"
@@ -13,16 +13,8 @@ const (
 	cacheBackupFile   = "cloudip.msgpack.bak"
 )
 
-// cacheMetadata stores information about cached data.
-type cacheMetadata struct {
-	Version    string    `json:"version"`
-	FetchedAt  time.Time `json:"fetched_at"`
-	Size       int64     `json:"size"`
-	DataSource string    `json:"data_source"` // "network" or "embedded"
-}
-
-// defaultCacheDir returns the default cache directory.
-func defaultCacheDir() string {
+// DefaultCacheDir returns the default cache directory.
+func DefaultCacheDir() string {
 	// Try XDG_CACHE_HOME first
 	if cacheHome := os.Getenv("XDG_CACHE_HOME"); cacheHome != "" {
 		return filepath.Join(cacheHome, "go-cloudip")
@@ -36,14 +28,15 @@ func defaultCacheDir() string {
 	return filepath.Join(home, ".cache", "go-cloudip")
 }
 
-// loadFromCache loads data from the cache directory.
-func loadFromCache(dir string) ([]byte, error) {
+// LoadFromCache loads data from the cache directory.
+func LoadFromCache(dir string) ([]byte, error) {
 	dataPath := filepath.Join(dir, cacheDataFile)
 	return os.ReadFile(dataPath)
 }
 
-// saveToCache saves data to the cache directory.
-func saveToCache(dir string, data []byte) error {
+// SaveToCache saves data to the cache directory.
+// The version parameter is optional and used for metadata.
+func SaveToCache(dir string, data []byte, version string) error {
 	// Create directory if needed
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -68,15 +61,11 @@ func saveToCache(dir string, data []byte) error {
 	}
 
 	// Write metadata
-	meta := cacheMetadata{
-		FetchedAt:  time.Now(),
+	meta := CacheMetadata{
+		Version:    version,
+		FetchedAt:  time.Now().Unix(),
 		Size:       int64(len(data)),
 		DataSource: "network",
-	}
-
-	// Try to get version from data
-	if state, err := loadFromBytes(data); err == nil {
-		meta.Version = state.version
 	}
 
 	metaJSON, _ := json.MarshalIndent(meta, "", "  ")
@@ -85,15 +74,15 @@ func saveToCache(dir string, data []byte) error {
 	return nil
 }
 
-// getCacheMetadata reads the cache metadata.
-func getCacheMetadata(dir string) (*cacheMetadata, error) {
+// GetCacheMetadata reads the cache metadata.
+func GetCacheMetadata(dir string) (*CacheMetadata, error) {
 	metaPath := filepath.Join(dir, cacheMetadataFile)
 	data, err := os.ReadFile(metaPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var meta cacheMetadata
+	var meta CacheMetadata
 	if err := json.Unmarshal(data, &meta); err != nil {
 		return nil, err
 	}
@@ -101,17 +90,17 @@ func getCacheMetadata(dir string) (*cacheMetadata, error) {
 	return &meta, nil
 }
 
-// isCacheStale returns true if the cache is older than the given duration.
-func isCacheStale(dir string, maxAge time.Duration) bool {
-	meta, err := getCacheMetadata(dir)
+// IsCacheStale returns true if the cache is older than the given duration.
+func IsCacheStale(dir string, maxAge time.Duration) bool {
+	meta, err := GetCacheMetadata(dir)
 	if err != nil {
 		return true
 	}
-	return time.Since(meta.FetchedAt) > maxAge
+	return time.Since(time.Unix(meta.FetchedAt, 0)) > maxAge
 }
 
-// clearCache removes all cached data.
-func clearCache(dir string) error {
+// ClearCache removes all cached data.
+func ClearCache(dir string) error {
 	dataPath := filepath.Join(dir, cacheDataFile)
 	backupPath := filepath.Join(dir, cacheBackupFile)
 	metaPath := filepath.Join(dir, cacheMetadataFile)

@@ -3,6 +3,8 @@ package cloudip
 import (
 	"net/http"
 	"time"
+
+	"github.com/rezmoss/go-cloudip/internal/source"
 )
 
 // options holds configuration for the Detector.
@@ -30,12 +32,12 @@ type options struct {
 // defaultOptions returns options with default values.
 func defaultOptions() *options {
 	return &options{
-		dataDir:    defaultCacheDir(),
+		dataDir:    source.DefaultCacheDir(),
 		autoUpdate: 0,
 		offline:    false,
 		httpClient: nil,
-		dataURL:    defaultDataURL,
-		versionURL: defaultVersionURL,
+		dataURL:    source.DefaultDataURL,
+		versionURL: source.DefaultVersionURL,
 	}
 }
 

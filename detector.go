@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/rezmoss/go-cloudip/internal/source"
 )
 
 // Detector is the main type for cloud IP detection.
@@ -60,14 +62,14 @@ func (d *Detector) loadInitialData() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		data, err := fetchData(ctx, d.opts.httpClient)
+		data, err := source.FetchData(ctx, d.opts.httpClient, d.opts.dataURL)
 		if err == nil {
 			state, err := loadFromBytes(data)
 			if err == nil {
 				d.state.Store(state)
 				// Save to cache for future use
 				if d.opts.dataDir != "" {
-					_ = saveToCache(d.opts.dataDir, data)
+					_ = source.SaveToCache(d.opts.dataDir, data, state.version)
 				}
 				return nil
 			}
@@ -76,7 +78,7 @@ func (d *Detector) loadInitialData() error {
 
 	// Try cache if network failed or offline
 	if d.opts.dataDir != "" {
-		data, err := loadFromCache(d.opts.dataDir)
+		data, err := source.LoadFromCache(d.opts.dataDir)
 		if err == nil {
 			state, err := loadFromBytes(data)
 			if err == nil {
@@ -87,7 +89,7 @@ func (d *Detector) loadInitialData() error {
 	}
 
 	// Fall back to embedded data
-	data, err := getEmbeddedData()
+	data, err := source.GetEmbeddedData()
 	if err != nil {
 		return fmt.Errorf("no data available: %w", err)
 	}
@@ -128,7 +130,7 @@ func (d *Detector) Update(ctx context.Context) error {
 		return fmt.Errorf("update disabled in offline mode")
 	}
 
-	data, err := fetchData(ctx, d.opts.httpClient)
+	data, err := source.FetchData(ctx, d.opts.httpClient, d.opts.dataURL)
 	if err != nil {
 		return fmt.Errorf("fetch failed: %w", err)
 	}
@@ -143,10 +145,35 @@ func (d *Detector) Update(ctx context.Context) error {
 
 	// Update cache
 	if d.opts.dataDir != "" {
-		_ = saveToCache(d.opts.dataDir, data)
+		_ = source.SaveToCache(d.opts.dataDir, data, state.version)
 	}
 
 	return nil
+}
+
+// CheckUpdate checks if a new version is available.
+// Returns true if the remote version is newer than the local version.
+func (d *Detector) CheckUpdate(ctx context.Context) (bool, *source.VersionInfo, error) {
+	if d.opts.offline {
+		return false, nil, fmt.Errorf("update check disabled in offline mode")
+	}
+
+	info, err := source.FetchVersion(ctx, d.opts.httpClient, d.opts.versionURL)
+	if err != nil {
+		return false, nil, err
+	}
+
+	state := d.state.Load()
+	if state == nil {
+		return true, info, nil
+	}
+
+	// Compare versions (newer if remote version string is greater)
+	if info.Version > state.version {
+		return true, info, nil
+	}
+
+	return false, info, nil
 }
 
 // Close stops background updates and releases resources.
