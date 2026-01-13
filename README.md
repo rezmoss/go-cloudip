@@ -13,7 +13,8 @@ Fast cloud provider IP detection for Go. Determine if an IP address belongs to A
 - **Automatic updates** - Optional background refresh from [cloudip-db](https://github.com/rezmoss/cloudip-db)
 - **Offline support** - Works without network using embedded data
 - **Thread-safe** - Concurrent lookups with lock-free reads
-- **Zero dependencies** at runtime (data is embedded)
+- **Zero config** - First run fetches latest data and caches it; works offline afterwards
+- **Embedded fallback** - Includes compiled-in data for air-gapped environments
 
 ## Installation
 
@@ -54,6 +55,19 @@ func main() {
     }
 }
 ```
+
+## How Data Loading Works
+
+On initialization, the detector loads IP range data with this priority:
+
+1. **Network** - Fetches latest data from [cloudip-db](https://github.com/rezmoss/cloudip-db) and caches locally
+2. **Cache** - Uses previously cached data if network unavailable
+3. **Embedded** - Falls back to compiled-in data (for air-gapped environments)
+
+This means:
+- **First run**: Automatically downloads latest IP ranges and caches them (~/.cache/go-cloudip)
+- **Subsequent runs**: Still tries network first, but has cache as reliable fallback
+- **Offline/air-gapped**: Use `WithOffline()` to skip network entirely
 
 ## API Reference
 
@@ -197,12 +211,12 @@ if hasUpdate {
 
 | Operation | Time |
 |-----------|------|
-| IPv4 Lookup | < 200 ns |
-| IPv6 Lookup | < 300 ns |
-| String parse + Lookup | < 400 ns |
-| Data load (from cache) | < 20 ms |
+| IPv4 Lookup | ~200-300 ns |
+| IPv6 Lookup | ~200-300 ns |
+| LookupAddr (netip.Addr) | ~200-250 ns |
+| Data load + parse | ~50 ms |
 
-Memory usage: ~10-15 MB for all providers loaded.
+All lookups are **sub-microsecond**. Memory usage: ~10-15 MB for all providers loaded.
 
 ## Data Source
 
