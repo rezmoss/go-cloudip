@@ -34,9 +34,9 @@ clean:
 	rm -rf bin/ dist/ coverage.out coverage.html
 	go clean
 
-# Update embedded data from cloudip-db
+# Update embedded data from cloudip-db (downloads, verifies SHA-256, validates)
 update-data:
-	curl -L -o data/cloudip.msgpack https://github.com/rezmoss/cloudip-db/raw/main/data/cloudip.msgpack
+	go run ./scripts/fetch-data
 	@echo "Data updated. Don't forget to commit the changes."
 
 # Run benchmarks

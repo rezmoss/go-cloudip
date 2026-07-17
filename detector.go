@@ -22,10 +22,6 @@ type Detector struct {
 	// Background updater
 	stopUpdate chan struct{}
 	updateWg   sync.WaitGroup
-
-	// Initialization
-	initOnce sync.Once
-	initErr  error
 }
 
 // NewDetector creates a new Detector with the given options.
@@ -105,10 +101,7 @@ func (d *Detector) loadInitialData() error {
 
 // startAutoUpdate starts the background update goroutine.
 func (d *Detector) startAutoUpdate() {
-	d.updateWg.Add(1)
-	go func() {
-		defer d.updateWg.Done()
-
+	d.updateWg.Go(func() {
 		ticker := time.NewTicker(d.opts.autoUpdate)
 		defer ticker.Stop()
 
@@ -120,7 +113,7 @@ func (d *Detector) startAutoUpdate() {
 				_ = d.Update(context.Background())
 			}
 		}
-	}()
+	})
 }
 
 // Update fetches the latest data and updates the detector.

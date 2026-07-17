@@ -1,6 +1,6 @@
 module github.com/rezmoss/go-cloudip
 
-go 1.21
+go 1.25
 
 require (
 	github.com/vmihailenco/msgpack/v5 v5.4.1

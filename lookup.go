@@ -46,17 +46,11 @@ func (s *detectorState) lookupAddr(addr netip.Addr) *rangeEntry {
 
 // lookupString performs a lookup using an IP string.
 func (s *detectorState) lookupString(ipStr string) *rangeEntry {
-	// Try netip.Addr first (faster)
-	if addr, err := netip.ParseAddr(ipStr); err == nil {
-		return s.lookupAddr(addr)
-	}
-
-	// Fall back to net.ParseIP
-	ip := net.ParseIP(ipStr)
-	if ip == nil {
+	addr, err := netip.ParseAddr(ipStr)
+	if err != nil {
 		return nil
 	}
-	return s.lookup(ip)
+	return s.lookupAddr(addr)
 }
 
 // toLookupResult converts a range entry to a LookupResult.

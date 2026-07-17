@@ -37,7 +37,6 @@ func FetchData(ctx context.Context, client *http.Client, url string) ([]byte, er
 		return nil, fmt.Errorf("create request failed: %w", err)
 	}
 
-	// Set headers for efficient download
 	req.Header.Set("Accept", "application/octet-stream")
 	req.Header.Set("User-Agent", "go-cloudip/1.0")
 
@@ -51,7 +50,6 @@ func FetchData(ctx context.Context, client *http.Client, url string) ([]byte, er
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
-	// Limit download size
 	reader := io.LimitReader(resp.Body, MaxDownloadSize)
 	data, err := io.ReadAll(reader)
 	if err != nil {
@@ -61,8 +59,23 @@ func FetchData(ctx context.Context, client *http.Client, url string) ([]byte, er
 	return data, nil
 }
 
-// FetchVersion downloads the version information from the given URL.
+// FetchVersion downloads and parses the version information from the given URL.
 func FetchVersion(ctx context.Context, client *http.Client, url string) (*VersionInfo, error) {
+	data, err := FetchVersionRaw(ctx, client, url)
+	if err != nil {
+		return nil, err
+	}
+
+	var info VersionInfo
+	if err := json.Unmarshal(data, &info); err != nil {
+		return nil, fmt.Errorf("decode failed: %w", err)
+	}
+
+	return &info, nil
+}
+
+// FetchVersionRaw downloads the raw version.json bytes from the given URL.
+func FetchVersionRaw(ctx context.Context, client *http.Client, url string) ([]byte, error) {
 	if client == nil {
 		client = &http.Client{Timeout: DefaultTimeout}
 	}
@@ -88,10 +101,11 @@ func FetchVersion(ctx context.Context, client *http.Client, url string) (*Versio
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
-	var info VersionInfo
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, fmt.Errorf("decode failed: %w", err)
+	reader := io.LimitReader(resp.Body, MaxDownloadSize)
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, fmt.Errorf("read body failed: %w", err)
 	}
 
-	return &info, nil
+	return data, nil
 }
