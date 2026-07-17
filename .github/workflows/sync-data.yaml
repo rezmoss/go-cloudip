@@ -1,0 +1,73 @@
+name: sync-data
+
+on:
+  schedule:
+    # Every Monday at 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync cloudip-db
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Fetch latest cloudip-db data
+        run: go run ./scripts/fetch-data
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if git diff --quiet -- internal/source/data; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: No changes
+        if: steps.changes.outputs.changed == 'false'
+        run: echo "No upstream data changes; nothing to release."
+
+      - name: Run tests
+        if: steps.changes.outputs.changed == 'true'
+        run: go test -race ./...
+
+      - name: Commit, tag and push
+        if: steps.changes.outputs.changed == 'true'
+        id: release
+        run: |
+          data_version=$(jq -r .version internal/source/data/version.json)
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add internal/source/data
+          git commit -m "chore(data): sync cloudip-db ${data_version}"
+
+          # Bump the patch component of the latest semver tag (default v0.1.0).
+          latest=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | sort -V | tail -n1)
+          if [ -z "$latest" ]; then
+            new_version="v0.1.0"
+          else
+            base=${latest#v}
+            major=$(echo "$base" | cut -d. -f1)
+            minor=$(echo "$base" | cut -d. -f2)
+            patch=$(echo "$base" | cut -d. -f3)
+            new_version="v${major}.${minor}.$((patch + 1))"
+          fi
+
+          git tag -a "$new_version" -m "chore(release): $new_version (cloudip-db ${data_version})"
+          git push origin HEAD --follow-tags
+          echo "version=$new_version" >> "$GITHUB_OUTPUT"
+          echo "Released $new_version (cloudip-db $data_version)"
