@@ -70,4 +70,15 @@ jobs:
           git tag -a "$new_version" -m "chore(release): $new_version (cloudip-db ${data_version})"
           git push origin HEAD --follow-tags
           echo "version=$new_version" >> "$GITHUB_OUTPUT"
-          echo "Released $new_version (cloudip-db $data_version)"
+          echo "Tagged $new_version (cloudip-db $data_version)"
+
+      # Tags pushed with GITHUB_TOKEN don't trigger release.yaml, so release here.
+      - name: Release
+        if: steps.changes.outputs.changed == 'true'
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
