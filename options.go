@@ -63,8 +63,8 @@ func WithAutoUpdate(interval time.Duration) Option {
 	}
 }
 
-// WithOffline disables all network access.
-// The detector will only use embedded data.
+// WithOffline disables network access. Uses cache if present, else embedded data.
+// Add WithNoCache for embedded only.
 func WithOffline() Option {
 	return func(o *options) {
 		o.offline = true

@@ -48,6 +48,16 @@ func LookupAddr(addr netip.Addr) LookupResult {
 	return mustGetDefaultDetector().LookupAddr(addr)
 }
 
+// LookupAll returns every record containing the IP using the default detector.
+func LookupAll(ip string) []LookupResult {
+	return mustGetDefaultDetector().LookupAll(ip)
+}
+
+// LookupAllAddr is LookupAll for a netip.Addr.
+func LookupAllAddr(addr netip.Addr) []LookupResult {
+	return mustGetDefaultDetector().LookupAllAddr(addr)
+}
+
 // GetProvider returns the provider for the given IP, or empty string if not found.
 func GetProvider(ip string) Provider {
 	return mustGetDefaultDetector().GetProvider(ip)

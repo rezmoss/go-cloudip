@@ -1,29 +1,17 @@
-// Package cloudip provides fast cloud provider IP detection.
-//
-// It can determine if an IP address belongs to major cloud providers
-// (AWS, GCP, Azure, Cloudflare, DigitalOcean, Oracle) with sub-microsecond
-// lookup times using a Patricia trie data structure.
 package cloudip
-
-import (
-	"net"
-	"net/netip"
-
-	"github.com/yl2chen/cidranger"
-)
 
 // Provider represents a cloud provider.
 type Provider string
 
 // Cloud provider constants.
 const (
-	ProviderUnknown     Provider = ""
-	ProviderAWS         Provider = "aws"
-	ProviderGCP         Provider = "gcp"
-	ProviderAzure       Provider = "azure"
-	ProviderCloudflare  Provider = "cloudflare"
+	ProviderUnknown      Provider = ""
+	ProviderAWS          Provider = "aws"
+	ProviderGCP          Provider = "gcp"
+	ProviderAzure        Provider = "azure"
+	ProviderCloudflare   Provider = "cloudflare"
 	ProviderDigitalOcean Provider = "digitalocean"
-	ProviderOracle      Provider = "oracle"
+	ProviderOracle       Provider = "oracle"
 )
 
 // String returns the provider name.
@@ -54,41 +42,12 @@ type LookupResult struct {
 	CIDR string
 }
 
-// rangeEntry implements cidranger.RangerEntry for storing IP range metadata.
-type rangeEntry struct {
-	network  net.IPNet
-	provider Provider
-	region   string
-	service  string
-	cidr     string
-}
-
-// Network returns the IP network for this entry.
-func (e *rangeEntry) Network() net.IPNet {
-	return e.network
-}
-
-// networkFromCIDR converts a CIDR string to net.IPNet.
-func networkFromCIDR(cidr string) (net.IPNet, error) {
-	_, ipNet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return net.IPNet{}, err
-	}
-	return *ipNet, nil
-}
-
-// netIPToNetIP converts netip.Addr to net.IP.
-func netIPToNetIP(addr netip.Addr) net.IP {
-	return addr.AsSlice()
-}
-
-
 // detectorState holds the immutable state for lookups.
 // This is swapped atomically for lock-free reads.
 type detectorState struct {
-	ranger    cidranger.Ranger
-	version   string
-	buildTime int64
-	providers []string
+	idx        *index
+	version    string
+	buildTime  int64
+	providers  []string
 	rangeCount int
 }

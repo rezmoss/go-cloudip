@@ -39,9 +39,14 @@ func run() error {
 		return fmt.Errorf("parse version.json: %w", err)
 	}
 
-	rawMsgpack, err := source.FetchData(ctx, client, source.DefaultDataURL)
+	downloaded, err := source.FetchData(ctx, client, source.DefaultDataURL)
 	if err != nil {
 		return fmt.Errorf("fetch cloudip.msgpack: %w", err)
+	}
+	// sha256 in version.json is of uncompressed data
+	rawMsgpack, err := source.Decompress(downloaded)
+	if err != nil {
+		return fmt.Errorf("decompress cloudip.msgpack: %w", err)
 	}
 
 	if info.SHA256 != "" {

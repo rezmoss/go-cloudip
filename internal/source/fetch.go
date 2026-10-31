@@ -10,14 +10,14 @@ import (
 )
 
 const (
-	// DefaultDataURL is the default data URL (GitHub raw content).
-	DefaultDataURL = "https://github.com/rezmoss/cloudip-db/raw/main/data/cloudip.msgpack"
+	// DefaultDataURL is the default data URL (gz, ~9x smaller).
+	DefaultDataURL = "https://github.com/rezmoss/cloudip-db/raw/main/data/cloudip.msgpack.gz"
 
 	// DefaultVersionURL is the default version URL.
 	DefaultVersionURL = "https://github.com/rezmoss/cloudip-db/raw/main/data/version.json"
 
-	// MaxDownloadSize limits downloads to 10 MB.
-	MaxDownloadSize = 10 * 1024 * 1024
+	// MaxDownloadSize limits downloads to 32 MB.
+	MaxDownloadSize = 32 * 1024 * 1024
 
 	// DefaultTimeout for HTTP requests.
 	DefaultTimeout = 30 * time.Second
@@ -50,13 +50,7 @@ func FetchData(ctx context.Context, client *http.Client, url string) ([]byte, er
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
-	reader := io.LimitReader(resp.Body, MaxDownloadSize)
-	data, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("read body failed: %w", err)
-	}
-
-	return data, nil
+	return readLimited(resp.Body)
 }
 
 // FetchVersion downloads and parses the version information from the given URL.
@@ -101,11 +95,17 @@ func FetchVersionRaw(ctx context.Context, client *http.Client, url string) ([]by
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 	}
 
-	reader := io.LimitReader(resp.Body, MaxDownloadSize)
-	data, err := io.ReadAll(reader)
+	return readLimited(resp.Body)
+}
+
+// readLimited: errors instead of truncating past MaxDownloadSize.
+func readLimited(r io.Reader) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, MaxDownloadSize+1))
 	if err != nil {
 		return nil, fmt.Errorf("read body failed: %w", err)
 	}
-
+	if len(data) > MaxDownloadSize {
+		return nil, fmt.Errorf("response exceeds %d bytes", MaxDownloadSize)
+	}
 	return data, nil
 }

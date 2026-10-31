@@ -1,8 +1,8 @@
 // Package cloudip provides fast cloud provider IP detection.
 //
 // It determines whether an IP address belongs to AWS, GCP, Azure,
-// Cloudflare, DigitalOcean, or Oracle Cloud with sub-microsecond
-// lookup times using a Patricia trie data structure.
+// Cloudflare, DigitalOcean, or Oracle Cloud. Lookups take tens of ns with
+// zero allocs, via a flattened sorted segment table.
 //
 // # Quick Start
 //
@@ -41,6 +41,14 @@
 //
 //	addr, _ := netip.ParseAddr("52.94.76.1")
 //	result := cloudip.LookupAddr(addr)
+//
+// # Overlapping Records
+//
+// Some prefixes appear multiple times (e.g. AWS AMAZON + EC2, Azure global +
+// regional tag). Lookup picks the most specific prefix, then a record with a
+// region, then a specific service over umbrella tags (AMAZON, AzureCloud).
+// Missing region falls back to nearest same-provider parent range.
+// LookupAll returns all records unmodified.
 //
 // # Data Source
 //
