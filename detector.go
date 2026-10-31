@@ -177,13 +177,13 @@ func (d *Detector) Close() error {
 }
 
 // Lookup returns information about the given IP address.
+// Dup prefixes resolve to the record with a region and most specific service; see LookupAll.
 func (d *Detector) Lookup(ip string) LookupResult {
 	state := d.state.Load()
 	if state == nil {
 		return LookupResult{Found: false}
 	}
-	entry := state.lookupString(ip)
-	return entry.toLookupResult()
+	return state.idx.result(state.lookupString(ip))
 }
 
 // LookupAddr returns information about the given IP address.
@@ -192,28 +192,53 @@ func (d *Detector) LookupAddr(addr netip.Addr) LookupResult {
 	if state == nil {
 		return LookupResult{Found: false}
 	}
-	entry := state.lookupAddr(addr)
-	return entry.toLookupResult()
+	return state.idx.result(state.idx.lookupAddr(addr))
+}
+
+// LookupAll returns every record containing the IP, most specific prefix first. nil if not found.
+func (d *Detector) LookupAll(ip string) []LookupResult {
+	state := d.state.Load()
+	if state == nil {
+		return nil
+	}
+	return state.idx.all(state.lookupString(ip))
+}
+
+// LookupAllAddr is LookupAll for a netip.Addr.
+func (d *Detector) LookupAllAddr(addr netip.Addr) []LookupResult {
+	state := d.state.Load()
+	if state == nil {
+		return nil
+	}
+	return state.idx.all(state.idx.lookupAddr(addr))
 }
 
 // GetProvider returns the provider for the given IP, or empty string if not found.
 func (d *Detector) GetProvider(ip string) Provider {
-	return d.Lookup(ip).Provider
+	state := d.state.Load()
+	if state == nil {
+		return ProviderUnknown
+	}
+	return state.idx.provider(state.lookupString(ip))
 }
 
 // GetProviderAddr returns the provider for the given IP address.
 func (d *Detector) GetProviderAddr(addr netip.Addr) Provider {
-	return d.LookupAddr(addr).Provider
+	state := d.state.Load()
+	if state == nil {
+		return ProviderUnknown
+	}
+	return state.idx.provider(state.idx.lookupAddr(addr))
 }
 
 // IsCloudProvider returns true if the IP belongs to any cloud provider.
 func (d *Detector) IsCloudProvider(ip string) bool {
-	return d.Lookup(ip).Found
+	return d.GetProvider(ip) != ProviderUnknown
 }
 
 // IsCloudProviderAddr returns true if the IP belongs to any cloud provider.
 func (d *Detector) IsCloudProviderAddr(addr netip.Addr) bool {
-	return d.LookupAddr(addr).Found
+	return d.GetProviderAddr(addr) != ProviderUnknown
 }
 
 // IsAWS returns true if the IP belongs to AWS.
