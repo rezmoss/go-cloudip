@@ -93,6 +93,7 @@ cloudip.GetProvider(ip string) Provider
 // Detailed lookup
 cloudip.Lookup(ip string) LookupResult
 cloudip.LookupAll(ip string) []LookupResult // every record containing ip
+cloudip.LookupBatch(ips []string) []LookupResult // one result per input, same database snapshot
 
 // Metadata
 cloudip.Version() string
@@ -103,6 +104,8 @@ cloudip.Providers() []string
 cloudip.Update(ctx context.Context) error
 cloudip.CheckUpdate(ctx context.Context) (bool, *VersionInfo, error)
 ```
+
+`LookupBatch` preserves input order and duplicates. Invalid or unmatched addresses return a result with `Found: false`. A batch uses one database snapshot, even if the background updater replaces the database while it runs.
 
 ### Custom Detector
 
